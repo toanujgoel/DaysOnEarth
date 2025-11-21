@@ -1,0 +1,7 @@
+{
+  "name": "Days on Earth",
+  "description": "An interactive web platform that calculates and visualizes personal life statistics based on a user's birthdate, putting a person's life into perspective against personal and environmental metrics.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
