@@ -1,17 +1,18 @@
-
 import React, { useState, useCallback } from 'react';
 import { UserInputForm } from './components/UserInputForm';
 import { ResultsDisplay } from './components/ResultsDisplay';
 import { Chatbot } from './components/Chatbot';
 import { getEarthChanges, getEnvironmentalImpact, getCosmicPerspective, getNearbyEnvironmentalSites, getFunStats } from './services/geminiService';
-import type { UserData, StatResults, ChartDataPoint } from './types';
+import type { UserData, StatResults, ChartDataPoint, FeatureId } from './types';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
+import { AdModal } from './components/AdModal';
+import { PremiumModal } from './components/PremiumModal';
 
 const App: React.FC = () => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [results, setResults] = useState<StatResults | null>(null);
-  
+
   // Specific chart data states
   const [lifeDistributionData, setLifeDistributionData] = useState<ChartDataPoint[] | null>(null);
   const [carbonTrendData, setCarbonTrendData] = useState<ChartDataPoint[] | null>(null);
@@ -19,13 +20,36 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Monetization State
+  const [isPremium, setIsPremium] = useState<boolean>(false);
+  const [unlockedFeatures, setUnlockedFeatures] = useState<Set<FeatureId>>(new Set());
+  const [showAdModal, setShowAdModal] = useState<boolean>(false);
+  const [activeAdFeature, setActiveAdFeature] = useState<FeatureId | null>(null);
+  const [showPremiumModal, setShowPremiumModal] = useState<boolean>(false);
+
+  const handleWatchAd = (featureId: FeatureId) => {
+    setActiveAdFeature(featureId);
+    setShowAdModal(true);
+  };
+
+  const handleAdComplete = () => {
+    if (activeAdFeature) {
+      setUnlockedFeatures(prev => new Set(prev).add(activeAdFeature));
+      setActiveAdFeature(null);
+    }
+  };
+
+  const handleUpgrade = () => {
+    setIsPremium(true);
+  };
+
   const calculateSimpleMetrics = (data: UserData): Omit<StatResults, 'earthChanges' | 'environmentalImpact' | 'cosmicPerspective' | 'nearbySites' | 'funFacts'> => {
     const birthdate = new Date(data.birthdate);
     const now = new Date();
     const ageInMs = now.getTime() - birthdate.getTime();
     const daysLived = Math.floor(ageInMs / (1000 * 60 * 60 * 24));
     const ageInYears = daysLived / 365.25;
-    
+
     // Multipliers based on activity
     let activityMultiplier = 1.2; // Sedentary
     if (data.activityLevel === 'moderate') activityMultiplier = 1.55;
@@ -35,7 +59,7 @@ const App: React.FC = () => {
     let bmr = (10 * data.weight) + (6.25 * data.height) - (5 * ageInYears);
     if (data.gender === 'male') bmr += 5;
     else bmr -= 161;
-    
+
     const dailyCalories = bmr * activityMultiplier;
 
     // Heartbeat averages (bpm)
@@ -47,12 +71,12 @@ const App: React.FC = () => {
     let dailyDistance = 3;
     if (data.activityLevel === 'moderate') dailyDistance = 6;
     if (data.activityLevel === 'active') dailyDistance = 10;
-    
+
     // Cosmic Stats
     const galacticSpeedKmPerSec = 220; // Approx speed of solar system around galactic center
     const secondsLived = daysLived * 24 * 60 * 60;
     const galacticDistance = secondsLived * galacticSpeedKmPerSec;
-    
+
     const moonOrbitalPeriodDays = 27.32;
     const moonOrbits = daysLived / moonOrbitalPeriodDays;
 
@@ -71,53 +95,53 @@ const App: React.FC = () => {
   };
 
   const generateChartData = (daysLived: number, diet: string) => {
-      // 1. Life Distribution (Donut)
-      const hoursLived = daysLived * 24;
-      // Estimations
-      const sleepHours = Math.floor(hoursLived * 0.33);
-      const workSchoolHours = Math.floor(hoursLived * 0.25); // Rough avg over lifetime
-      const screenTimeHours = Math.floor(hoursLived * 0.20);
-      const eatingHours = Math.floor(hoursLived * 0.08);
-      const otherHours = hoursLived - (sleepHours + workSchoolHours + screenTimeHours + eatingHours);
+    // 1. Life Distribution (Donut)
+    const hoursLived = daysLived * 24;
+    // Estimations
+    const sleepHours = Math.floor(hoursLived * 0.33);
+    const workSchoolHours = Math.floor(hoursLived * 0.25); // Rough avg over lifetime
+    const screenTimeHours = Math.floor(hoursLived * 0.20);
+    const eatingHours = Math.floor(hoursLived * 0.08);
+    const otherHours = hoursLived - (sleepHours + workSchoolHours + screenTimeHours + eatingHours);
 
-      setLifeDistributionData([
-        { label: 'Sleeping', value: sleepHours, color: '#587E76' }, // Moss
-        { label: 'Work/School', value: workSchoolHours, color: '#2D4F4A' }, // Forest
-        { label: 'Digital/Screens', value: screenTimeHours, color: '#84C69B' }, // Accent
-        { label: 'Eating', value: eatingHours, color: '#A9B4B2' }, // Stone
-        { label: 'Other', value: otherHours, color: '#DCE5E3' }, // Light Green
-      ]);
+    setLifeDistributionData([
+      { label: 'Sleeping', value: sleepHours, color: '#587E76' }, // Moss
+      { label: 'Work/School', value: workSchoolHours, color: '#2D4F4A' }, // Forest
+      { label: 'Digital/Screens', value: screenTimeHours, color: '#84C69B' }, // Accent
+      { label: 'Eating', value: eatingHours, color: '#A9B4B2' }, // Stone
+      { label: 'Other', value: otherHours, color: '#DCE5E3' }, // Light Green
+    ]);
 
-      // 2. Carbon Trend (Area)
-      // Baseline ~4.5 tons/year. 
-      let annualCarbon = 4.5;
-      if (diet === 'vegan') annualCarbon *= 0.5;
-      else if (diet === 'vegetarian') annualCarbon *= 0.7;
-      else if (diet === 'omnivore') annualCarbon *= 1.2; // Meat heavy assumption for contrast
+    // 2. Carbon Trend (Area)
+    // Baseline ~4.5 tons/year. 
+    let annualCarbon = 4.5;
+    if (diet === 'vegan') annualCarbon *= 0.5;
+    else if (diet === 'vegetarian') annualCarbon *= 0.7;
+    else if (diet === 'omnivore') annualCarbon *= 1.2; // Meat heavy assumption for contrast
 
-      const age = Math.floor(daysLived / 365.25);
-      const trendData: ChartDataPoint[] = [];
-      let cumulativeCarbon = 0;
-      
-      // Generate 5 points roughly distributed
-      const steps = 5;
-      const stepSize = Math.max(1, Math.floor(age / steps));
-      
-      for (let i = 0; i <= age; i += stepSize) {
-          // Add a slight curve for increasing consumption in adulthood
-          const lifeStageMultiplier = i < 18 ? 0.6 : 1.0;
-          cumulativeCarbon += (annualCarbon * stepSize * lifeStageMultiplier);
-          trendData.push({
-              label: `Age ${i}`,
-              value: Math.round(cumulativeCarbon)
-          });
-      }
-      // Ensure final point matches current age
-      if (trendData[trendData.length-1].label !== `Age ${age}`) {
-          trendData.push({ label: `Age ${age}`, value: Math.round(daysLived / 365.25 * annualCarbon) });
-      }
+    const age = Math.floor(daysLived / 365.25);
+    const trendData: ChartDataPoint[] = [];
+    let cumulativeCarbon = 0;
 
-      setCarbonTrendData(trendData);
+    // Generate 5 points roughly distributed
+    const steps = 5;
+    const stepSize = Math.max(1, Math.floor(age / steps));
+
+    for (let i = 0; i <= age; i += stepSize) {
+      // Add a slight curve for increasing consumption in adulthood
+      const lifeStageMultiplier = i < 18 ? 0.6 : 1.0;
+      cumulativeCarbon += (annualCarbon * stepSize * lifeStageMultiplier);
+      trendData.push({
+        label: `Age ${i}`,
+        value: Math.round(cumulativeCarbon)
+      });
+    }
+    // Ensure final point matches current age
+    if (trendData[trendData.length - 1].label !== `Age ${age}`) {
+      trendData.push({ label: `Age ${age}`, value: Math.round(daysLived / 365.25 * annualCarbon) });
+    }
+
+    setCarbonTrendData(trendData);
   };
 
   const handleCalculate = useCallback(async (data: UserData) => {
@@ -125,7 +149,7 @@ const App: React.FC = () => {
     setError(null);
     setUserData(data);
     setResults(null);
-    
+
     // Clear charts
     setLifeDistributionData(null);
     setCarbonTrendData(null);
@@ -133,9 +157,9 @@ const App: React.FC = () => {
     try {
       const birthDateObj = new Date(data.birthdate);
       const simpleMetrics = calculateSimpleMetrics(data);
-      
+
       generateChartData(simpleMetrics.daysLived, data.diet);
-      
+
       const initialResults: StatResults = {
         ...simpleMetrics,
         earthChanges: null,
@@ -164,32 +188,32 @@ const App: React.FC = () => {
       setIsLoading(false);
     }
   }, []);
-  
+
   const handleFindNearbySites = useCallback(async () => {
-      if (!("geolocation" in navigator)) {
-        setError("Geolocation is not supported by your browser.");
-        return;
+    if (!("geolocation" in navigator)) {
+      setError("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      try {
+        const { latitude, longitude } = position.coords;
+        const sites = await getNearbyEnvironmentalSites(latitude, longitude);
+        setResults(prev => prev ? { ...prev, nearbySites: sites } : null);
+      } catch (e) {
+        console.error("Failed to get nearby sites:", e);
+        setError("Could not retrieve nearby environmental sites. Please ensure location services are enabled and try again.");
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(true);
-      setError(null);
-      
-      navigator.geolocation.getCurrentPosition(async (position) => {
-          try {
-              const { latitude, longitude } = position.coords;
-              const sites = await getNearbyEnvironmentalSites(latitude, longitude);
-              setResults(prev => prev ? { ...prev, nearbySites: sites } : null);
-          } catch(e) {
-              console.error("Failed to get nearby sites:", e);
-              setError("Could not retrieve nearby environmental sites. Please ensure location services are enabled and try again.");
-          } finally {
-              setIsLoading(false);
-          }
-      }, (err) => {
-          console.error("Geolocation error:", err);
-          setError("Unable to retrieve your location. Please grant permission to access your location.");
-          setIsLoading(false);
-      });
+    }, (err) => {
+      console.error("Geolocation error:", err);
+      setError("Unable to retrieve your location. Please grant permission to access your location.");
+      setIsLoading(false);
+    });
   }, []);
 
 
@@ -205,19 +229,35 @@ const App: React.FC = () => {
             {isLoading && !results && <div className="flex justify-center items-center h-full"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-brand-accent"></div></div>}
             {error && <div className="bg-red-900/50 border border-red-500 text-red-300 p-4 rounded-lg">{error}</div>}
             {results && (
-                <ResultsDisplay 
-                    results={results} 
-                    lifeDistributionData={lifeDistributionData}
-                    carbonTrendData={carbonTrendData}
-                    isLoading={isLoading} 
-                    onFindNearbySites={handleFindNearbySites} 
-                />
+              <ResultsDisplay
+                results={results}
+                lifeDistributionData={lifeDistributionData}
+                carbonTrendData={carbonTrendData}
+                isLoading={isLoading}
+                onFindNearbySites={handleFindNearbySites}
+                isPremium={isPremium}
+                unlockedFeatures={unlockedFeatures}
+                onWatchAd={handleWatchAd}
+                onUpgrade={() => setShowPremiumModal(true)}
+              />
             )}
           </div>
         </div>
       </main>
       <Footer />
       {userData && results && <Chatbot initialContext={{ ...userData, ...results }} />}
+
+      <AdModal
+        isOpen={showAdModal}
+        onClose={() => setShowAdModal(false)}
+        onComplete={handleAdComplete}
+      />
+
+      <PremiumModal
+        isOpen={showPremiumModal}
+        onClose={() => setShowPremiumModal(false)}
+        onUpgrade={handleUpgrade}
+      />
     </div>
   );
 };

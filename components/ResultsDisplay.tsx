@@ -1,15 +1,21 @@
 
 import React from 'react';
-import type { StatResults, GroundingChunk, ChartDataPoint } from '../types';
+import type { StatResults, GroundingChunk, ChartDataPoint, FeatureId } from '../types';
 import { StatCard, LoadingCard, IconStatCard } from './StatCard';
 import { DonutChart, AreaChart, LifeProgressBar } from './Charts';
+import { LockedFeature } from './LockedFeature';
+import { generatePDF } from '../utils/pdfExport';
 
 interface ResultsDisplayProps {
-  results: StatResults;
-  lifeDistributionData: ChartDataPoint[] | null;
-  carbonTrendData: ChartDataPoint[] | null;
-  isLoading: boolean;
-  onFindNearbySites: () => void;
+    results: StatResults;
+    lifeDistributionData: ChartDataPoint[] | null;
+    carbonTrendData: ChartDataPoint[] | null;
+    isLoading: boolean;
+    onFindNearbySites: () => void;
+    isPremium: boolean;
+    unlockedFeatures: Set<FeatureId>;
+    onWatchAd: (featureId: FeatureId) => void;
+    onUpgrade: () => void;
 }
 
 const Sources: React.FC<{ sources: GroundingChunk[] }> = ({ sources }) => {
@@ -55,145 +61,205 @@ const FunFactCard: React.FC<{ fact: { label: string; value: string; icon: string
     )
 }
 
-export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, lifeDistributionData, carbonTrendData, isLoading, onFindNearbySites }) => {
-  const ageInYears = results.daysLived / 365.25;
+export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
+    results,
+    lifeDistributionData,
+    carbonTrendData,
+    isLoading,
+    onFindNearbySites,
+    isPremium,
+    unlockedFeatures,
+    onWatchAd,
+    onUpgrade
+}) => {
+    const ageInYears = results.daysLived / 365.25;
 
-  return (
-    <div className="space-y-6 pb-12">
-      
-      {/* Key Metrics Section - Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <IconStatCard title="Days Lived" value={results.daysLived.toLocaleString()} unit="Days" icon="calendar" />
-        <IconStatCard title="Heartbeats" value={`~${(results.heartbeats / 1_000_000_000).toFixed(2)}B`} unit="Beats" icon="heart" />
-        <IconStatCard title="Energy Used" value={`~${(results.caloriesBurned / 1_000_000).toFixed(1)}M`} unit="Calories" icon="fire" />
-        <IconStatCard title="Distance Walked" value={`~${results.distanceWalked.toLocaleString()}`} unit="Kilometers" icon="footsteps" />
-        <IconStatCard title="Hours Slept" value={`~${results.hoursSlept.toLocaleString()}`} unit="Hours" icon="moon" />
-        <IconStatCard title="Meals Consumed" value={`~${results.mealsConsumed.toLocaleString()}`} unit="Meals" icon="utensils" />
-      </div>
-      
-      {/* Cosmic Context - New Graphic Section */}
-      <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-        <h2 className="text-2xl font-bold text-brand-light-green mb-4 mt-8 border-b border-brand-moss/30 pb-2">Cosmic Context</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-brand-forest/50 p-6 rounded-xl border border-brand-moss/50 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <svg width="150" height="150" viewBox="0 0 100 100" fill="currentColor" className="text-brand-accent">
-                        <circle cx="50" cy="50" r="40" />
-                    </svg>
+    return (
+        <div className="space-y-6 pb-12" id="results-container">
+
+            {isPremium && (
+                <div className="flex justify-end mb-4">
+                    <button
+                        onClick={() => generatePDF('results-container')}
+                        className="bg-brand-accent hover:bg-brand-light-green text-brand-dark-green font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Export PDF Report
+                    </button>
                 </div>
-                <h3 className="text-lg font-bold text-brand-accent mb-2">Galactic Traveler</h3>
-                <p className="text-brand-stone mb-4">Distance traveled around the Milky Way center (at ~220km/s):</p>
-                <p className="text-3xl md:text-4xl font-bold text-brand-light-green">{(results.galacticDistance / 1_000_000_000).toFixed(2)} Billion km</p>
-                <p className="text-xs text-brand-stone mt-2">That's roughly {(results.galacticDistance / 149600000).toFixed(0)} AU!</p>
-            </div>
-            <div className="bg-brand-forest/50 p-6 rounded-xl border border-brand-moss/50 relative overflow-hidden group">
-                 <div className="absolute top-0 right-0 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <svg width="150" height="150" viewBox="0 0 100 100" fill="currentColor" className="text-brand-stone">
-                         <path d="M50 10 A 40 40 0 1 0 50 90 A 40 40 0 1 0 50 10 Z" />
-                    </svg>
-                </div>
-                <h3 className="text-lg font-bold text-brand-accent mb-2">Lunar Witness</h3>
-                <p className="text-brand-stone mb-4">While you were busy living, the Moon orbited Earth:</p>
-                <p className="text-3xl md:text-4xl font-bold text-brand-light-green">{results.moonOrbits.toFixed(1)} Times</p>
-                 <p className="text-xs text-brand-stone mt-2">A silent companion for {results.daysLived} days.</p>
-            </div>
-        </div>
-      </div>
-
-      {/* Analytics Dashboard Section */}
-      <div className="animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-          <h2 className="text-2xl font-bold text-brand-light-green mb-4 mt-8 border-b border-brand-moss/30 pb-2">Analytics Dashboard</h2>
-          
-          {/* Life Progress Bar */}
-          <div className="mb-6">
-            <LifeProgressBar age={ageInYears} />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="h-auto w-full">
-                {lifeDistributionData ? (
-                    <DonutChart data={lifeDistributionData} title="The Time of Your Life" />
-                ) : <LoadingCard height="h-96" />}
-              </div>
-              <div className="h-auto w-full">
-                {carbonTrendData ? (
-                    <AreaChart data={carbonTrendData} title="Your Carbon Legacy" />
-                ) : <LoadingCard height="h-96" />}
-              </div>
-          </div>
-      </div>
-      
-      {/* AI Fun Facts Section */}
-      <div className="animate-fade-in-up" style={{ animationDelay: '250ms' }}>
-         <h2 className="text-2xl font-bold text-brand-light-green mb-4 mt-8 border-b border-brand-moss/30 pb-2">Curious Insights</h2>
-         {results.funFacts && results.funFacts.length > 0 ? (
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                 {results.funFacts.map((fact, idx) => (
-                     <FunFactCard key={idx} fact={fact} />
-                 ))}
-             </div>
-         ) : (
-             !isLoading && <p className="text-brand-stone italic">Generating fun facts...</p>
-         )}
-      </div>
-
-
-      {/* Environmental Impact Section */}
-      <div className="animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-         <h2 className="text-2xl font-bold text-brand-light-green mb-4 mt-8 border-b border-brand-moss/30 pb-2">Impact & Environment</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {results.environmentalImpact ? (
-                <>
-                    <StatCard title="Carbon Footprint Assessment" value={results.environmentalImpact.carbonFootprint} isLongText={true}/>
-                    <StatCard title="Water Consumption Insight" value={results.environmentalImpact.waterConsumption} isLongText={true}/>
-                </>
-            ) : (
-                <>
-                    <LoadingCard />
-                    <LoadingCard />
-                </>
             )}
-        </div>
-      </div>
 
-       <div className="animate-fade-in-up" style={{ animationDelay: '400ms' }}>
-         {results.cosmicPerspective ? (
-            <div className="bg-brand-forest/50 p-6 rounded-xl border border-brand-moss/50 mt-6">
-                <h3 className="text-xl font-bold text-brand-accent mb-2">Your Cosmic Perspective</h3>
-                <p className="text-brand-stone leading-relaxed">{results.cosmicPerspective.text}</p>
+            {/* Key Metrics Section - Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                <IconStatCard title="Days Lived" value={results.daysLived.toLocaleString()} unit="Days" icon="calendar" />
+                <IconStatCard title="Heartbeats" value={`~${(results.heartbeats / 1_000_000_000).toFixed(2)}B`} unit="Beats" icon="heart" />
+                <IconStatCard title="Energy Used" value={`~${(results.caloriesBurned / 1_000_000).toFixed(1)}M`} unit="Calories" icon="fire" />
+                <IconStatCard title="Distance Walked" value={`~${results.distanceWalked.toLocaleString()}`} unit="Kilometers" icon="footsteps" />
+                <IconStatCard title="Hours Slept" value={`~${results.hoursSlept.toLocaleString()}`} unit="Hours" icon="moon" />
+                <IconStatCard title="Meals Consumed" value={`~${results.mealsConsumed.toLocaleString()}`} unit="Meals" icon="utensils" />
             </div>
-         ) : <LoadingCard height="h-32" />}
-       </div>
 
-       <div className="animate-fade-in-up" style={{ animationDelay: '500ms' }}>
-         {results.earthChanges ? (
-             <div className="bg-brand-forest/50 p-6 rounded-xl border border-brand-moss/50 mt-6">
-                 <h3 className="text-xl font-bold text-brand-accent mb-2">The World Since You Were Born</h3>
-                 <p className="text-brand-stone leading-relaxed whitespace-pre-wrap">{results.earthChanges.summary}</p>
-                 <Sources sources={results.earthChanges.sources} />
-             </div>
-         ) : <LoadingCard height="h-48" />}
-       </div>
-       
-       <div className="animate-fade-in-up" style={{ animationDelay: '600ms' }}>
-          <div className="bg-brand-forest/50 p-6 rounded-xl border border-brand-moss/50 mt-6">
-              <h3 className="text-xl font-bold text-brand-accent mb-2">Explore Your Local Environment</h3>
-              <p className="text-brand-stone mb-4">Discover significant environmental sites and conservation projects near you.</p>
-              <button onClick={onFindNearbySites} disabled={isLoading} className="bg-brand-stone hover:bg-brand-light-green disabled:bg-brand-moss text-brand-dark-green font-bold py-2 px-4 rounded-lg transition duration-300">
-                {isLoading ? "Searching..." : "Find Nearby Sites"}
-              </button>
-              {results.nearbySites.length > 0 && (
-                  <div className="mt-4 space-y-3">
-                      {results.nearbySites.map((site, index) => (
-                          <div key={index} className="border-t border-brand-moss/50 pt-3">
-                              <a href={site.uri} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-accent hover:underline">{site.title}</a>
-                              <p className="text-sm text-brand-stone mt-1">{site.description}</p>
-                          </div>
-                      ))}
-                  </div>
-              )}
-          </div>
-       </div>
-    </div>
-  );
+            {/* Cosmic Context - New Graphic Section */}
+            <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+                <LockedFeature
+                    isPremium={isPremium}
+                    isUnlocked={unlockedFeatures.has('galactic')}
+                    onWatchAd={() => onWatchAd('galactic')}
+                    onUpgrade={onUpgrade}
+                    title="Unlock Cosmic Perspective"
+                    description="See how far you've traveled through the galaxy and your relationship with the moon."
+                >
+                    <h2 className="text-2xl font-bold text-brand-light-green mb-4 mt-8 border-b border-brand-moss/30 pb-2">Cosmic Context</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-brand-forest/50 p-6 rounded-xl border border-brand-moss/50 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <svg width="150" height="150" viewBox="0 0 100 100" fill="currentColor" className="text-brand-accent">
+                                    <circle cx="50" cy="50" r="40" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-brand-accent mb-2">Galactic Traveler</h3>
+                            <p className="text-brand-stone mb-4">Distance traveled around the Milky Way center (at ~220km/s):</p>
+                            <p className="text-3xl md:text-4xl font-bold text-brand-light-green">{(results.galacticDistance / 1_000_000_000).toFixed(2)} Billion km</p>
+                            <p className="text-xs text-brand-stone mt-2">That's roughly {(results.galacticDistance / 149600000).toFixed(0)} AU!</p>
+                        </div>
+                        <div className="bg-brand-forest/50 p-6 rounded-xl border border-brand-moss/50 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <svg width="150" height="150" viewBox="0 0 100 100" fill="currentColor" className="text-brand-stone">
+                                    <path d="M50 10 A 40 40 0 1 0 50 90 A 40 40 0 1 0 50 10 Z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-brand-accent mb-2">Lunar Witness</h3>
+                            <p className="text-brand-stone mb-4">While you were busy living, the Moon orbited Earth:</p>
+                            <p className="text-3xl md:text-4xl font-bold text-brand-light-green">{results.moonOrbits.toFixed(1)} Times</p>
+                            <p className="text-xs text-brand-stone mt-2">A silent companion for {results.daysLived} days.</p>
+                        </div>
+                    </div>
+                </LockedFeature>
+            </div>
+
+            {/* Analytics Dashboard Section */}
+            <div className="animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+                <h2 className="text-2xl font-bold text-brand-light-green mb-4 mt-8 border-b border-brand-moss/30 pb-2">Analytics Dashboard</h2>
+
+                {/* Life Progress Bar */}
+                <div className="mb-6">
+                    <LifeProgressBar age={ageInYears} />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="h-auto w-full">
+                        <LockedFeature
+                            isPremium={isPremium}
+                            isUnlocked={unlockedFeatures.has('life_chart')}
+                            onWatchAd={() => onWatchAd('life_chart')}
+                            onUpgrade={onUpgrade}
+                            title="Unlock Life Distribution"
+                            description="Visualize how you've spent every hour of your life so far."
+                        >
+                            {lifeDistributionData ? (
+                                <DonutChart data={lifeDistributionData} title="The Time of Your Life" />
+                            ) : <LoadingCard height="h-96" />}
+                        </LockedFeature>
+                    </div>
+                    <div className="h-auto w-full">
+                        {carbonTrendData ? (
+                            <AreaChart data={carbonTrendData} title="Your Carbon Legacy" />
+                        ) : <LoadingCard height="h-96" />}
+                    </div>
+                </div>
+            </div>
+
+            {/* AI Fun Facts Section */}
+            <div className="animate-fade-in-up" style={{ animationDelay: '250ms' }}>
+                <h2 className="text-2xl font-bold text-brand-light-green mb-4 mt-8 border-b border-brand-moss/30 pb-2">Curious Insights</h2>
+                {results.funFacts && results.funFacts.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {results.funFacts.map((fact, idx) => (
+                            <FunFactCard key={idx} fact={fact} />
+                        ))}
+                    </div>
+                ) : (
+                    !isLoading && <p className="text-brand-stone italic">Generating fun facts...</p>
+                )}
+            </div>
+
+
+            {/* Environmental Impact Section */}
+            <div className="animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+                <LockedFeature
+                    isPremium={isPremium}
+                    isUnlocked={unlockedFeatures.has('environmental')}
+                    onWatchAd={() => onWatchAd('environmental')}
+                    onUpgrade={onUpgrade}
+                    title="Unlock Environmental Impact"
+                    description="Understand your carbon footprint and water usage based on your lifestyle."
+                >
+                    <h2 className="text-2xl font-bold text-brand-light-green mb-4 mt-8 border-b border-brand-moss/30 pb-2">Impact & Environment</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {results.environmentalImpact ? (
+                            <>
+                                <StatCard title="Carbon Footprint Assessment" value={results.environmentalImpact.carbonFootprint} isLongText={true} />
+                                <StatCard title="Water Consumption Insight" value={results.environmentalImpact.waterConsumption} isLongText={true} />
+                            </>
+                        ) : (
+                            <>
+                                <LoadingCard />
+                                <LoadingCard />
+                            </>
+                        )}
+                    </div>
+                </LockedFeature>
+            </div>
+
+            <div className="animate-fade-in-up" style={{ animationDelay: '400ms' }}>
+                {results.cosmicPerspective ? (
+                    <div className="bg-brand-forest/50 p-6 rounded-xl border border-brand-moss/50 mt-6">
+                        <h3 className="text-xl font-bold text-brand-accent mb-2">Your Cosmic Perspective</h3>
+                        <p className="text-brand-stone leading-relaxed">{results.cosmicPerspective.text}</p>
+                    </div>
+                ) : <LoadingCard height="h-32" />}
+            </div>
+
+            <div className="animate-fade-in-up" style={{ animationDelay: '500ms' }}>
+                {results.earthChanges ? (
+                    <div className="bg-brand-forest/50 p-6 rounded-xl border border-brand-moss/50 mt-6">
+                        <h3 className="text-xl font-bold text-brand-accent mb-2">The World Since You Were Born</h3>
+                        <p className="text-brand-stone leading-relaxed whitespace-pre-wrap">{results.earthChanges.summary}</p>
+                        <Sources sources={results.earthChanges.sources} />
+                    </div>
+                ) : <LoadingCard height="h-48" />}
+            </div>
+
+            <div className="animate-fade-in-up" style={{ animationDelay: '600ms' }}>
+                <LockedFeature
+                    isPremium={isPremium}
+                    isUnlocked={unlockedFeatures.has('nearby')}
+                    onWatchAd={() => onWatchAd('nearby')}
+                    onUpgrade={onUpgrade}
+                    title="Unlock Nearby Discovery"
+                    description="Find environmental sites and nature reserves near you."
+                >
+                    <div className="bg-brand-forest/50 p-6 rounded-xl border border-brand-moss/50 mt-6">
+                        <h3 className="text-xl font-bold text-brand-accent mb-2">Explore Your Local Environment</h3>
+                        <p className="text-brand-stone mb-4">Discover significant environmental sites and conservation projects near you.</p>
+                        <button onClick={onFindNearbySites} disabled={isLoading} className="bg-brand-stone hover:bg-brand-light-green disabled:bg-brand-moss text-brand-dark-green font-bold py-2 px-4 rounded-lg transition duration-300">
+                            {isLoading ? "Searching..." : "Find Nearby Sites"}
+                        </button>
+                        {results.nearbySites.length > 0 && (
+                            <div className="mt-4 space-y-3">
+                                {results.nearbySites.map((site, index) => (
+                                    <div key={index} className="border-t border-brand-moss/50 pt-3">
+                                        <a href={site.uri} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-accent hover:underline">{site.title}</a>
+                                        <p className="text-sm text-brand-stone mt-1">{site.description}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </LockedFeature>
+            </div>
+        </div>
+    );
 };

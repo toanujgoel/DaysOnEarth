@@ -3,6 +3,8 @@ export type Gender = 'male' | 'female' | 'other';
 export type ActivityLevel = 'sedentary' | 'moderate' | 'active';
 export type Diet = 'omnivore' | 'vegetarian' | 'vegan';
 
+export type FeatureId = 'galactic' | 'environmental' | 'nearby' | 'life_chart' | 'ai_analysis';
+
 export interface UserData {
   birthdate: string;
   country: string;
