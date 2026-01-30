@@ -5,7 +5,7 @@
 
 # Days on Earth
 
-Days on Earth is an interactive web platform designed for anyone curious about their personal journey through **time** and space. It takes a user's birthdate and lifestyle details to generate a personalized dashboard that visualizes their life in numbers—from heartbeats and breaths taken to their environmental footprint and distance traveled through the galaxy. It solves the problem of abstracting personal impact and time by turning vague concepts into concrete, relatable, and educational statistics.
+https://www.DaysOnEarth.life is an interactive web platform designed for anyone curious about their personal journey through **time** and space. It takes a user's birthdate and lifestyle details to generate a personalized dashboard that visualizes their life in numbers—from heartbeats and breaths taken to their environmental footprint and distance traveled through the galaxy. It solves the problem of abstracting personal impact and time by turning vague concepts into concrete, relatable, and educational statistics.
 
 ---
 
